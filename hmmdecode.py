@@ -5,9 +5,10 @@ Created on Fri Mar 10 12:58:26 2017
 @author: Sagar Makwana
 """
 from  sys import argv
-import json
+import pickle
 import codecs
 import math
+import json
 
 #--------------------Function Definitions-------------------------------------
 
@@ -28,7 +29,7 @@ def makeBackPointerColumns(tags,columnList):
 
 def safe_ln(x):
     if x <= 0:
-        return 0.0
+        return float('-inf')
     elif x > 1:
         return 0.0
     else:
@@ -42,7 +43,7 @@ outputFile = codecs.open('hmmoutput.txt','w', "utf-8")
 #Importing the model 
 superDict = {}
 with open('hmmmodel.txt', 'r') as fp:
-    superDict = json.load(fp)
+    superDict = pickle.load(fp)
 
 
 transitionProb = superDict['transitionProb']
@@ -77,6 +78,8 @@ for line in codecs.open(fileName,'r','utf-8'):
         if word != '':
             if count == 0: #If it is the initial state
                 for tag in tags:
+                    #temp = emmisionProb[tag]
+                    #bo =  word in temp
                     probTable[count][tag] = safe_ln(transitionProb['start'][tag]) + safe_ln(emmisionProb[tag].get(word,2.0))
                     backPointer[count][tag] = 'start'
                     
@@ -103,23 +106,18 @@ for line in codecs.open(fileName,'r','utf-8'):
             maxProb = probTable[count - 1][tag]
             maxTag = tag
     
-    answerTags = []
-    prev = maxTag    
-    for i in range(count - 1,-1,-1):
-        #print prev
-        answerTags.append(prev)
-        prev = backPointer[i][prev]
-    #print prev    
-      
-    answerTags.reverse()
-    
+
+    prev = maxTag        
     resultLine = ''
-    for word in words:
+    wordCount = count -1
+    for word in words[::-1]:
         word = word.strip()
         if word != '':
-            resultLine += word + '/' + answerTags.pop(0) + ' '
+            resultLine = word + '/' + prev + ' ' + resultLine
+            prev = backPointer[wordCount][prev]
+            wordCount -= 1
         else:
-            resultLine += ' '
+            resultLine = ' ' + resultLine
     
     outputFile.write(resultLine[:-1] + '\n')
     print str(lineCount)

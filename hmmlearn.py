@@ -6,6 +6,7 @@ Created on Tue Mar 07 00:01:33 2017
 """
 from  sys import argv
 import codecs
+import pickle
 import json
 
 trainFileName = argv[-1]
@@ -77,7 +78,7 @@ for tag1 in transitionProb.keys():
 print 'Generating emmision prob'
 #Genearting emmision probabilities
 for tag in emmisionProb.keys():
-    print tag
+    #print tag
     sumCount = 0
     for word in emmisionProb[tag].keys():
         sumCount += emmisionProb[tag][word]
@@ -94,7 +95,7 @@ superDict = {'transitionProb':transitionProb,'emmisionProb':emmisionProb}
 print 'Writing to model'
 #Writing the model to nbmodel.txt
 with open('hmmmodel.txt', 'w') as fp:
-    json.dump(superDict, fp, indent=4)  
+    pickle.dump(superDict, fp)  
                                      
 print 'Done'
 
