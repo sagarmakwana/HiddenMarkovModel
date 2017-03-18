@@ -73,6 +73,7 @@ for line in codecs.open(fileName,'r','utf-8'):
     backPointer = makeBackPointerColumns(tags,backPointer)
     
     count = 0
+    prevTags = [] # This contains all the valid tags from the previous cycle
     for word in words:
         word = word.strip()
         if word != '':
@@ -81,21 +82,32 @@ for line in codecs.open(fileName,'r','utf-8'):
                     #temp = emmisionProb[tag]
                     #bo =  word in temp
                     probTable[count][tag] = safe_ln(transitionProb['start'][tag]) + safe_ln(emmisionProb[tag].get(word,2.0))
+                    
+                    if probTable[count][tag] != float('-inf'):
+                        prevTags.append(tag)
+                    
                     backPointer[count][tag] = 'start'
                     
             else: # if it is not the initial state
+                currTags = []
                 for tag1 in tags:
                     maxProb  = float("-inf")
                     maxTag = ''
                     #Find the most probable transition
-                    for tag2 in tags:
+                    for tag2 in prevTags:
                         prob = probTable[count-1][tag2] + safe_ln(transitionProb[tag2][tag1]) + safe_ln(emmisionProb[tag1].get(word,1.0))
                         if prob > maxProb:
                             maxProb = prob
                             maxTag = tag2
                     
                     probTable[count][tag1] = maxProb
+                    
+                    if probTable[count][tag1] != float('-inf'):
+                        currTags.append(tag1)
+                        
                     backPointer[count][tag1] = maxTag
+                               
+                prevTags  = currTags
                                
             count += 1
     
