@@ -5,37 +5,23 @@ Created on Fri Mar 10 12:58:26 2017
 @author: Sagar Makwana
 """
 from  sys import argv
-import pickle
 import codecs
 import math
 import json
 
 #--------------------Function Definitions-------------------------------------
 
-def makeProbColumns(tags,columnList):
-    for i in range(0,len(columnList)):
-        for tag in tags:
-            columnList[i][tag] = 0.0
-                      
-    return columnList
-                  
-
-def makeBackPointerColumns(tags,columnList):
-    for i in range(0,len(columnList)):
-        for tag in tags:
-         columnList[i][tag] = '' 
-                   
-    return columnList
-
 def safe_ln(x):
-    if x <= 0:
-        return float('-inf')
-    elif x > 1:
+    if x > 1:
         return 0.0
     else:
         return math.log(x)
     
-
+def getCorrectEmmisionProb(emmisionProb,word, tag):
+    if word not in emmisionProb:
+        return 2.0
+    else:
+        return emmisionProb[word][tag]
 #-----------------------------------------------------------------------------
 fileName = argv[-1]
 outputFile = codecs.open('hmmoutput.txt','w', "utf-8")
@@ -43,7 +29,7 @@ outputFile = codecs.open('hmmoutput.txt','w', "utf-8")
 #Importing the model 
 superDict = {}
 with open('hmmmodel.txt', 'r') as fp:
-    superDict = pickle.load(fp)
+    superDict = json.load(fp)
 
 
 transitionProb = superDict['transitionProb']
@@ -58,57 +44,48 @@ tags.remove('start')
 
 lineCount = 0
 for line in codecs.open(fileName,'r','utf-8'):
-    
+    #Initializing the probability and back pointer tables    
     probTable = []
     backPointer = []
     
+    #Tokenizing the line
     words = line.split(" ")
-    for word in words:
-        word = word.strip()
-        if word != '':
-            probTable.append({})
-            backPointer.append({})
-            
-    probTable = makeProbColumns(tags,probTable)
-    backPointer = makeBackPointerColumns(tags,backPointer)
-    
+ 
     count = 0
     prevTags = [] # This contains all the valid tags from the previous cycle
     for word in words:
         word = word.strip()
         if word != '':
+            probTable.append({})
+            backPointer.append({})
+            #Check if the word exists in emmisionprob table and asign the relevant tags to be considered for it
+            tagsInConsideration = emmisionProb.get(word, None )
+            if tagsInConsideration == None:
+                tagsInConsideration  = tags
+            else:
+                tagsInConsideration = tagsInConsideration.keys()
+            
             if count == 0: #If it is the initial state
-                for tag in tags:
-                    #temp = emmisionProb[tag]
-                    #bo =  word in temp
-                    probTable[count][tag] = safe_ln(transitionProb['start'][tag]) + safe_ln(emmisionProb[tag].get(word,2.0))
-                    
-                    if probTable[count][tag] != float('-inf'):
-                        prevTags.append(tag)
-                    
+                for tag in tagsInConsideration:
+                    probTable[count][tag] = safe_ln(transitionProb['start'][tag]) + safe_ln(getCorrectEmmisionProb(emmisionProb,word,tag))
                     backPointer[count][tag] = 'start'
                     
             else: # if it is not the initial state
-                currTags = []
-                for tag1 in tags:
+                for tag1 in tagsInConsideration:
                     maxProb  = float("-inf")
                     maxTag = ''
                     #Find the most probable transition
                     for tag2 in prevTags:
-                        prob = probTable[count-1][tag2] + safe_ln(transitionProb[tag2][tag1]) + safe_ln(emmisionProb[tag1].get(word,1.0))
+                        prob = probTable[count-1][tag2] + safe_ln(transitionProb[tag2][tag1]) + safe_ln(getCorrectEmmisionProb(emmisionProb,word,tag1))
                         if prob > maxProb:
                             maxProb = prob
                             maxTag = tag2
                     
                     probTable[count][tag1] = maxProb
-                    
-                    if probTable[count][tag1] != float('-inf'):
-                        currTags.append(tag1)
-                        
                     backPointer[count][tag1] = maxTag
                                
-                prevTags  = currTags
-                               
+            
+            prevTags = tagsInConsideration                   
             count += 1
     
     maxProb = float("-inf")
@@ -132,11 +109,11 @@ for line in codecs.open(fileName,'r','utf-8'):
             resultLine = ' ' + resultLine
     
     outputFile.write(resultLine[:-1] + '\n')
-    print str(lineCount)
+    #print str(lineCount)
     lineCount += 1
     
 outputFile.close()
-print 'Done'        
+#print 'Done'        
 
 
     

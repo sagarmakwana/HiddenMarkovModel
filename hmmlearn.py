@@ -6,18 +6,18 @@ Created on Tue Mar 07 00:01:33 2017
 """
 from  sys import argv
 import codecs
-import pickle
 import json
 
 trainFileName = argv[-1]
 
 #Transition Probabilities
-print 'Initialization..'
+#print 'Initialization..'
 transitionProb = {}
 emmisionProb = {}
-bagOfwords = set()
+totalTransitionTagcount = {}
+totalEmmisionTagCount = {}
 
-print 'Generating counts'
+#print 'Generating counts'
 count  = 0
 for line in codecs.open(trainFileName,'r','utf-8'):
     wordTagPairs = line.split(" ")
@@ -30,73 +30,70 @@ for line in codecs.open(trainFileName,'r','utf-8'):
         word = wordTagPair.strip()[:-3]
         tag = wordTagPair.strip()[-2:] 
         
-        #add words to the bag of words
-        if word not in bagOfwords:
-            bagOfwords.add(word)
-            
-            
+
         #Generating the transition counts
         if prevTag not in transitionProb:
             transitionProb[prevTag] = {}
+            
+        if tag not in transitionProb:
+            transitionProb[tag] = {}
             
         if tag in transitionProb[prevTag]:
             transitionProb[prevTag][tag] += 1
         else:
             transitionProb[prevTag][tag] = 1
                           
+        if prevTag in totalTransitionTagcount:
+            totalTransitionTagcount[prevTag] += 1
+        else:
+            totalTransitionTagcount[prevTag] = 1
+                          
         prevTag = tag
         
         #Generating the emmision count
-        if tag not in emmisionProb:
-            emmisionProb[tag] = {}
-            
-        if word in emmisionProb[tag]:
-            emmisionProb[tag][word] += 1
-        else:
-            emmisionProb[tag][word] = 1
-                        
+        if word not in emmisionProb:
+            emmisionProb[word] = {}
         
+        if tag in totalEmmisionTagCount:
+            totalEmmisionTagCount[tag] += 1
+        else:
+            totalEmmisionTagCount[tag] = 1
+        
+        if tag in emmisionProb[word]:
+            emmisionProb[word][tag] += 1
+        else:
+            emmisionProb[word][tag] = 1
+              
+                                
     #count  += 1    
     #print 'line ' + str(count)
-print 'Generating probabilities'
+#print 'Generating probabilities'
 #Generating transition probabilities        
 tagCount = len(transitionProb) - 1
 tags = transitionProb.keys()
 tags.remove('start')
 
-print 'Generating transition prob'              
+#print 'Generating transition prob'              
 for tag1 in transitionProb.keys():
-    sumCount = 0 
-    for tag2 in transitionProb[tag1].keys():
-        sumCount += transitionProb[tag1][tag2]
     for tag2 in tags:
         if tag2 in transitionProb[tag1]:
-            transitionProb[tag1][tag2] = (transitionProb[tag1][tag2] + 1)*1.0/(sumCount + tagCount)
+            transitionProb[tag1][tag2] = (transitionProb[tag1][tag2] + 1)*1.0/(totalTransitionTagcount[tag1] + tagCount)
         else:
-            transitionProb[tag1][tag2] = 1.0/(sumCount + tagCount)
+            transitionProb[tag1][tag2] = 1.0/(totalTransitionTagcount[tag1] + tagCount)
 
-print 'Generating emmision prob'
+#print 'Generating emmision prob'
 #Genearting emmision probabilities
-for tag in emmisionProb.keys():
-    #print tag
-    sumCount = 0
-    for word in emmisionProb[tag].keys():
-        sumCount += emmisionProb[tag][word]
-    wordSetInTag = set(emmisionProb[tag].keys())
-    for word in bagOfwords:
-        if word in wordSetInTag:
-            emmisionProb[tag][word] = emmisionProb[tag][word]*1.0/sumCount 
-        else:
-            emmisionProb[tag][word] = 0.0
-
- 
+for word in emmisionProb.keys():
+    for tag in emmisionProb[word]:
+        emmisionProb[word][tag] = emmisionProb[word][tag]*1.0/totalEmmisionTagCount[tag]
+     
 superDict = {'transitionProb':transitionProb,'emmisionProb':emmisionProb}
 
-print 'Writing to model'
+#print 'Writing to model'
 #Writing the model to nbmodel.txt
 with open('hmmmodel.txt', 'w') as fp:
-    pickle.dump(superDict, fp)  
+    json.dump(superDict, fp)  
                                      
-print 'Done'
+#print 'Done'
 
 
